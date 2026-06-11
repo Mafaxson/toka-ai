@@ -86,7 +86,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           "TOKA AI is a voice-first financial assistant for entrepreneurs. Record sales, track expenses and understand your profit just by talking.",
       },
       { name: "author", content: "TOKA AI" },
-      { property: "og:title", content: "TOKA AI — Talk to Your Business" },
+      { property: "og:title", content: "TOKA AI — Talk to Your Business, Know Your Money" },
       {
         property: "og:description",
         content:
@@ -94,14 +94,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "TOKA AI — Talk to Your Business, Know Your Money" },
+      { name: "description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
+      { property: "og:description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
+      { name: "twitter:description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png" },
     ],
     links: [
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap",
-      },
       { rel: "stylesheet", href: appCss },
       { rel: "icon", type: "image/png", href: "/icon.png" },
     ],
