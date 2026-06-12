@@ -79,14 +79,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "TOKA AI — Talk to Your Business, Know Your Money" },
+      { title: "TOKA AI — Talk to your business. Understand your money." },
       {
         name: "description",
         content:
           "TOKA AI is a voice-first financial assistant for entrepreneurs. Record sales, track expenses and understand your profit just by talking.",
       },
       { name: "author", content: "TOKA AI" },
-      { property: "og:title", content: "TOKA AI — Talk to Your Business, Know Your Money" },
+      { property: "og:title", content: "TOKA AI — Talk to your business. Understand your money." },
       {
         property: "og:description",
         content:
@@ -94,12 +94,32 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
-      { name: "twitter:title", content: "TOKA AI — Talk to Your Business, Know Your Money" },
-      { name: "description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
-      { property: "og:description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
-      { name: "twitter:description", content: "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances." },
-      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png" },
-      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png" },
+      { name: "twitter:title", content: "TOKA AI — Talk to your business. Understand your money." },
+      {
+        name: "description",
+        content:
+          "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances.",
+      },
+      {
+        property: "og:description",
+        content:
+          "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances.",
+      },
+      {
+        name: "twitter:description",
+        content:
+          "TOKA AI is a voice-first financial assistant for entrepreneurs to manage their business finances.",
+      },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/f1b0d8ee-678b-4593-96c6-82dbce8b21ca/id-preview-a8cca640--9f9c811d-44cb-42a4-b1b7-fc37ecc68d7a.lovable.app-1781191777073.png",
+      },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
@@ -136,7 +156,7 @@ function RootComponent() {
     } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
       router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+      queryClient.invalidateQueries();
     });
     return () => subscription.unsubscribe();
   }, [router, queryClient]);

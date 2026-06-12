@@ -1,19 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createClient } from "@supabase/supabase-js";
-import {
-  convertToModelMessages,
-  stepCountIs,
-  streamText,
-  tool,
-  type UIMessage,
-} from "ai";
+import { convertToModelMessages, stepCountIs, streamText, tool, type UIMessage } from "ai";
 import { z } from "zod";
-import type { Database, Json } from "@/integrations/supabase/types";
+import { getServerConfig } from "@/lib/config.server";
+import type { Database } from "@/integrations/supabase/types";
 
 export const Route = createFileRoute("/api/chat")({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        const { supabaseUrl, supabasePublishableKey, lovableApiKey } = getServerConfig();
+
         // --- Authenticate the caller (RLS applies as this user) ---
         const authHeader = request.headers.get("authorization") ?? "";
         if (!authHeader.startsWith("Bearer ")) {
@@ -21,20 +18,18 @@ export const Route = createFileRoute("/api/chat")({
         }
         const token = authHeader.slice("Bearer ".length);
 
-        const SUPABASE_URL = process.env.SUPABASE_URL;
-        const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
-        if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
+        if (!supabaseUrl || !supabasePublishableKey) {
           return new Response("Backend not configured", { status: 500 });
         }
 
-        const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        const supabase = createClient<Database>(supabaseUrl, supabasePublishableKey, {
           global: { headers: { Authorization: `Bearer ${token}` } },
           auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
         });
 
-        const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-        const userId = claimsData?.claims?.sub;
-        if (claimsError || !userId) {
+        const { data: userData, error: userError } = await supabase.auth.getUser(token);
+        const userId = userData?.user?.id;
+        if (userError || !userId) {
           return new Response("Unauthorized", { status: 401 });
         }
 
@@ -44,7 +39,11 @@ export const Route = createFileRoute("/api/chat")({
           conversationId?: string;
         };
         const conversationId = z.string().uuid().safeParse(body.conversationId);
-        if (!conversationId.success || !Array.isArray(body.messages) || body.messages.length === 0) {
+        if (
+          !conversationId.success ||
+          !Array.isArray(body.messages) ||
+          body.messages.length === 0
+        ) {
           return new Response("Invalid request", { status: 400 });
         }
         const messages = body.messages.slice(-30);
@@ -52,7 +51,7 @@ export const Route = createFileRoute("/api/chat")({
         // --- Verify the conversation belongs to this user ---
         const { data: conversation } = await supabase
           .from("conversations")
-          .select("id, title")
+          .select("id, message, ai_response")
           .eq("id", conversationId.data)
           .eq("user_id", userId)
           .maybeSingle();
@@ -61,28 +60,19 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         const { data: profile } = await supabase
-          .from("profiles")
-          .select("currency, business_name, full_name")
+          .from("users")
+          .select("currency, business_name, full_name, preferred_language")
           .eq("id", userId)
           .maybeSingle();
         const currency = profile?.currency ?? "USD";
 
         // --- Persist the incoming user message ---
         const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-        if (lastUserMessage) {
-          const { error: saveError } = await supabase.from("messages").insert({
-            conversation_id: conversationId.data,
-            user_id: userId,
-            role: "user",
-            parts: lastUserMessage.parts as unknown as Json,
-          });
-          if (saveError) console.error("Failed to save user message:", saveError.message);
-        }
+        if (!lastUserMessage) return new Response("Invalid request", { status: 400 });
 
-        const key = process.env.LOVABLE_API_KEY;
-        if (!key) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
+        if (!lovableApiKey) return new Response("Missing LOVABLE_API_KEY", { status: 500 });
         const { createLovableAiGatewayProvider } = await import("@/lib/ai-gateway.server");
-        const gateway = createLovableAiGatewayProvider(key);
+        const gateway = createLovableAiGatewayProvider(lovableApiKey);
 
         const tools = {
           record_transaction: tool({
@@ -118,11 +108,11 @@ export const Route = createFileRoute("/api/chat")({
                   amount,
                   category,
                   description: description ?? null,
-                  occurred_at: Number.isNaN(occurredAt.getTime())
+                  transaction_date: Number.isNaN(occurredAt.getTime())
                     ? new Date().toISOString()
                     : occurredAt.toISOString(),
                 })
-                .select("id, type, amount, category, description, occurred_at")
+                .select("id, type, amount, category, description, transaction_date")
                 .single();
               if (error) return { success: false, error: error.message };
               return { success: true, transaction: data, currency };
@@ -142,15 +132,15 @@ export const Route = createFileRoute("/api/chat")({
             execute: async ({ start_date, end_date, type }) => {
               let query = supabase
                 .from("transactions")
-                .select("type, amount, category, description, occurred_at")
+                .select("type, amount, category, description, transaction_date")
                 .eq("user_id", userId)
-                .gte("occurred_at", new Date(start_date).toISOString())
-                .order("occurred_at", { ascending: false })
+                .gte("transaction_date", new Date(start_date).toISOString())
+                .order("transaction_date", { ascending: false })
                 .limit(200);
               if (end_date) {
                 const end = new Date(end_date);
                 end.setHours(23, 59, 59, 999);
-                query = query.lte("occurred_at", end.toISOString());
+                query = query.lte("transaction_date", end.toISOString());
               }
               if (type) query = query.eq("type", type);
 
@@ -205,33 +195,22 @@ Your jobs:
         return result.toUIMessageStreamResponse({
           originalMessages: messages,
           onFinish: async ({ responseMessage }) => {
-            const { error: saveError } = await supabase.from("messages").insert({
-              conversation_id: conversationId.data,
-              user_id: userId,
-              role: "assistant",
-              parts: responseMessage.parts as unknown as Json,
-            });
-            if (saveError) console.error("Failed to save assistant message:", saveError.message);
-
-            // Title the thread from the first user message
-            if (conversation.title === "New conversation" && lastUserMessage) {
-              const text = lastUserMessage.parts
-                .map((p) => (p.type === "text" ? p.text : ""))
-                .join(" ")
-                .trim()
-                .slice(0, 60);
-              if (text) {
-                await supabase
-                  .from("conversations")
-                  .update({ title: text })
-                  .eq("id", conversationId.data);
-              }
-            } else {
-              await supabase
-                .from("conversations")
-                .update({ updated_at: new Date().toISOString() })
-                .eq("id", conversationId.data);
-            }
+            await supabase
+              .from("conversations")
+              .update({
+                message: lastUserMessage.parts
+                  .map((p) => (p.type === "text" ? p.text : ""))
+                  .join(" ")
+                  .trim()
+                  .slice(0, 500),
+                ai_response: responseMessage.parts
+                  .map((p) => (p.type === "text" ? p.text : ""))
+                  .join(" ")
+                  .trim()
+                  .slice(0, 2000),
+              })
+              .eq("id", conversationId.data)
+              .eq("user_id", userId);
           },
         });
       },

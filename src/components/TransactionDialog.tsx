@@ -25,7 +25,7 @@ export interface TransactionFormValues {
   amount: number;
   category: string;
   description: string | null;
-  occurred_at: string;
+  transactionDate: string;
 }
 
 interface TransactionDialogProps {
@@ -58,8 +58,8 @@ export function TransactionDialog({
     setCategory(initial?.category ?? "");
     setDescription(initial?.description ?? "");
     setDate(
-      initial?.occurred_at
-        ? format(new Date(initial.occurred_at), "yyyy-MM-dd")
+      initial?.transactionDate
+        ? format(new Date(initial.transactionDate), "yyyy-MM-dd")
         : format(new Date(), "yyyy-MM-dd"),
     );
   }, [open, initial]);
@@ -73,7 +73,7 @@ export function TransactionDialog({
       amount: parsedAmount,
       category: category.trim() || "Other",
       description: description.trim() || null,
-      occurred_at: new Date(`${date}T12:00:00`).toISOString(),
+      transactionDate: new Date(`${date}T12:00:00`).toISOString(),
     });
   };
 

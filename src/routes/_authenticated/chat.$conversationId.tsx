@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { Loader2 } from "lucide-react";
 import type { UIMessage } from "ai";
-import { getConversationMessages } from "@/lib/conversations.functions";
+import { getConversationMessages } from "@/services/conversation-service";
 import { ChatWindow } from "@/components/chat/ChatWindow";
 import { Button } from "@/components/ui/button";
 
@@ -13,11 +12,10 @@ export const Route = createFileRoute("/_authenticated/chat/$conversationId")({
 
 function ChatConversationPage() {
   const { conversationId } = Route.useParams();
-  const getMessagesFn = useServerFn(getConversationMessages);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["conversation", conversationId],
-    queryFn: () => getMessagesFn({ data: { conversationId } }),
+    queryFn: () => getConversationMessages(conversationId),
     staleTime: Infinity,
   });
 

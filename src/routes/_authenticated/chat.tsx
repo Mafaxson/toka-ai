@@ -3,13 +3,7 @@ import { useState } from "react";
 import { History } from "lucide-react";
 import { ThreadList } from "@/components/chat/ThreadList";
 import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 export const Route = createFileRoute("/_authenticated/chat")({
   component: ChatLayout,

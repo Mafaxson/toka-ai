@@ -7,13 +7,13 @@ import heroImage from "@/assets/hero-trader.jpg";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "TOKA AI — Talk to Your Business, Know Your Money" },
+      { title: "TOKA AI — Talk to your business. Understand your money." },
       {
         name: "description",
         content:
-          "Voice-first AI financial assistant for market traders, shop owners and entrepreneurs. Record sales, track expenses and know your profit just by talking.",
+          "TOKA AI helps you talk to your business and understand your money. Record sales, track expenses and know your profit just by talking.",
       },
-      { property: "og:title", content: "TOKA AI — Talk to Your Business" },
+      { property: "og:title", content: "TOKA AI — Talk to your business. Understand your money." },
       {
         property: "og:description",
         content:
@@ -113,13 +113,15 @@ function LandingPage() {
             </Button>
           </div>
           <ul className="mt-8 space-y-2 text-sm text-muted-foreground">
-            {["No spreadsheets or accounting jargon", "Works by voice or text", "Built for market traders, shops & small businesses"].map(
-              (item) => (
-                <li key={item} className="flex items-center gap-2">
-                  <Check className="h-4 w-4 text-income" /> {item}
-                </li>
-              ),
-            )}
+            {[
+              "No spreadsheets or accounting jargon",
+              "Works by voice or text",
+              "Built for market traders, shops & small businesses",
+            ].map((item) => (
+              <li key={item} className="flex items-center gap-2">
+                <Check className="h-4 w-4 text-income" /> {item}
+              </li>
+            ))}
           </ul>
         </div>
 
@@ -149,9 +151,7 @@ function LandingPage() {
       {/* Features */}
       <section className="border-t border-border bg-muted/40 py-16 md:py-20">
         <div className="mx-auto max-w-6xl px-4">
-          <h2 className="text-center text-3xl font-bold">
-            Your books, handled by conversation
-          </h2>
+          <h2 className="text-center text-3xl font-bold">Your books, handled by conversation</h2>
           <p className="mx-auto mt-3 max-w-xl text-center text-muted-foreground">
             Everything a small business needs to understand its money — without the complexity.
           </p>

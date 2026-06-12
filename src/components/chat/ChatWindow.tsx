@@ -11,11 +11,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import {
-  Message,
-  MessageContent,
-  MessageResponse,
-} from "@/components/ai-elements/message";
+import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputButton,
@@ -148,10 +144,7 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
                             <ToolHeader type={toolPart.type} state={toolPart.state} />
                             <ToolContent>
                               <ToolInput input={toolPart.input} />
-                              <ToolOutput
-                                output={toolPart.output}
-                                errorText={toolPart.errorText}
-                              />
+                              <ToolOutput output={toolPart.output} errorText={toolPart.errorText} />
                             </ToolContent>
                           </Tool>
                         );
@@ -176,11 +169,7 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
       <div className="border-t border-border bg-background p-3">
         <div className="mx-auto w-full max-w-3xl">
           <PromptInputProvider>
-            <Composer
-              status={status}
-              onStop={stop}
-              onSend={(text) => sendMessage({ text })}
-            />
+            <Composer status={status} onStop={stop} onSend={(text) => sendMessage({ text })} />
           </PromptInputProvider>
         </div>
       </div>
@@ -199,7 +188,12 @@ function Composer({
 }) {
   const controller = usePromptInputController();
 
-  const { listening, supported, start, stop: stopListening } = useSpeechRecognition((text) => {
+  const {
+    listening,
+    supported,
+    start,
+    stop: stopListening,
+  } = useSpeechRecognition((text) => {
     const current = controller.textInput.value;
     controller.textInput.setInput(current ? `${current} ${text}` : text);
   });
@@ -246,9 +240,7 @@ function Composer({
           >
             {listening ? <MicOff className="size-4 animate-pulse" /> : <Mic className="size-4" />}
           </PromptInputButton>
-          {listening && (
-            <span className="text-xs font-medium text-primary">Listening…</span>
-          )}
+          {listening && <span className="text-xs font-medium text-primary">Listening…</span>}
         </PromptInputTools>
         <PromptInputSubmit status={status} onStop={onStop} />
       </PromptInputFooter>

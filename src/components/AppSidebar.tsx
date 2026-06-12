@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, MessagesSquare, Receipt, BarChart3, LogOut } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
+import { getCurrentUser, signOut } from "@/services/auth-service";
 import {
   Sidebar,
   SidebarContent,
@@ -37,7 +37,9 @@ export function AppSidebar() {
   });
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
+    getCurrentUser()
+      .then((user) => setEmail(user?.email ?? null))
+      .catch(() => setEmail(null));
   }, []);
 
   const isActive = (path: string) => currentPath === path || currentPath.startsWith(`${path}/`);
@@ -45,7 +47,7 @@ export function AppSidebar() {
   const handleSignOut = async () => {
     await queryClient.cancelQueries();
     queryClient.clear();
-    await supabase.auth.signOut();
+    await signOut();
     navigate({ to: "/auth", replace: true });
   };
 

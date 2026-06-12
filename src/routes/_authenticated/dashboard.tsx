@@ -1,9 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, Wallet, MessagesSquare, ArrowRight } from "lucide-react";
-import { getDashboard } from "@/lib/transactions.functions";
+import { getDashboardSummary } from "@/services/transaction-service";
 import { formatMoney } from "@/lib/currencies";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,10 +13,9 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function DashboardPage() {
-  const getDashboardFn = useServerFn(getDashboard);
   const { data, isLoading } = useQuery({
     queryKey: ["dashboard"],
-    queryFn: () => getDashboardFn(),
+    queryFn: () => getDashboardSummary(),
   });
 
   return (
@@ -117,7 +115,7 @@ function DashboardPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{t.category}</p>
                       <p className="truncate text-xs text-muted-foreground">
-                        {t.description || format(new Date(t.occurred_at), "d MMM, h:mm a")}
+                        {t.description || format(new Date(t.transaction_date), "d MMM, h:mm a")}
                       </p>
                     </div>
                   </div>

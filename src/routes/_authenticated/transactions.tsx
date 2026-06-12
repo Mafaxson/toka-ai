@@ -1,16 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, TrendingUp, TrendingDown } from "lucide-react";
 import {
   listTransactions,
-  addTransaction,
-  updateTransaction,
-  deleteTransaction,
-} from "@/lib/transactions.functions";
+  createTransaction,
+  editTransaction,
+  removeTransaction,
+} from "@/services/transaction-service";
 import { formatMoney } from "@/lib/currencies";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -25,10 +24,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  TransactionDialog,
-  type TransactionFormValues,
-} from "@/components/TransactionDialog";
+import { TransactionDialog, type TransactionFormValues } from "@/components/TransactionDialog";
 import type { Tables } from "@/integrations/supabase/types";
 
 type Transaction = Tables<"transactions">;
@@ -39,18 +35,13 @@ export const Route = createFileRoute("/_authenticated/transactions")({
 
 function TransactionsPage() {
   const queryClient = useQueryClient();
-  const listFn = useServerFn(listTransactions);
-  const addFn = useServerFn(addTransaction);
-  const updateFn = useServerFn(updateTransaction);
-  const deleteFn = useServerFn(deleteTransaction);
-
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["transactions"],
-    queryFn: () => listFn(),
+    queryFn: () => listTransactions(),
   });
 
   const invalidateAll = () => {
@@ -62,9 +53,9 @@ function TransactionsPage() {
   const saveMutation = useMutation({
     mutationFn: async (values: TransactionFormValues) => {
       if (editing) {
-        await updateFn({ data: { ...values, id: editing.id } });
+        await editTransaction(editing.id, values);
       } else {
-        await addFn({ data: values });
+        await createTransaction(values);
       }
     },
     onSuccess: () => {
@@ -77,7 +68,7 @@ function TransactionsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => deleteFn({ data: { id } }),
+    mutationFn: async (id: string) => removeTransaction(id),
     onSuccess: () => {
       toast.success("Transaction deleted");
       setDeleting(null);
@@ -138,7 +129,7 @@ function TransactionsPage() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{t.category}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {format(new Date(t.occurred_at), "d MMM yyyy")}
+                      {format(new Date(t.transaction_date), "d MMM yyyy")}
                       {t.description ? ` · ${t.description}` : ""}
                     </p>
                   </div>
@@ -193,7 +184,7 @@ function TransactionsPage() {
                 amount: Number(editing.amount),
                 category: editing.category,
                 description: editing.description,
-                occurred_at: editing.occurred_at,
+                transactionDate: editing.transaction_date,
               }
             : null
         }

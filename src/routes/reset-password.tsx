@@ -2,11 +2,11 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "@/assets/toka-logo.png";
+import { updatePassword } from "@/services/auth-service";
 
 export const Route = createFileRoute("/reset-password")({
   head: () => ({
@@ -31,7 +31,7 @@ function ResetPasswordPage() {
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await updatePassword(password);
     setLoading(false);
     if (error) {
       toast.error(error.message);

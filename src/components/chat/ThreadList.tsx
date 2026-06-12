@@ -1,6 +1,5 @@
 import { Link, useNavigate, useParams } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Plus, Trash2, MessagesSquare } from "lucide-react";
@@ -8,7 +7,7 @@ import {
   listConversations,
   createConversation,
   deleteConversation,
-} from "@/lib/conversations.functions";
+} from "@/services/conversation-service";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -17,17 +16,13 @@ export function ThreadList({ onNavigate }: { onNavigate?: () => void }) {
   const queryClient = useQueryClient();
   const params = useParams({ strict: false }) as { conversationId?: string };
 
-  const listFn = useServerFn(listConversations);
-  const createFn = useServerFn(createConversation);
-  const deleteFn = useServerFn(deleteConversation);
-
   const { data: conversations, isLoading } = useQuery({
     queryKey: ["conversations"],
-    queryFn: () => listFn(),
+    queryFn: () => listConversations(),
   });
 
   const createMutation = useMutation({
-    mutationFn: () => createFn(),
+    mutationFn: () => createConversation(),
     onSuccess: ({ id }) => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       navigate({ to: "/chat/$conversationId", params: { conversationId: id } });
@@ -37,7 +32,7 @@ export function ThreadList({ onNavigate }: { onNavigate?: () => void }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => deleteFn({ data: { id } }),
+    mutationFn: (id: string) => deleteConversation(id),
     onSuccess: (_data, id) => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
       queryClient.removeQueries({ queryKey: ["conversation", id] });
@@ -86,10 +81,10 @@ export function ThreadList({ onNavigate }: { onNavigate?: () => void }) {
                     }`}
                   >
                     <span className="block truncate text-sm font-medium">
-                      {conversation.title}
+                      {conversation.message?.trim() || "New conversation"}
                     </span>
                     <span className="block text-xs text-muted-foreground">
-                      {formatDistanceToNow(new Date(conversation.updated_at), { addSuffix: true })}
+                      {formatDistanceToNow(new Date(conversation.created_at), { addSuffix: true })}
                     </span>
                   </Link>
                   <Button

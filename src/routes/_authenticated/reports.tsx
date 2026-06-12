@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, Wallet, ReceiptText } from "lucide-react";
-import { getReport } from "@/lib/transactions.functions";
+import { getReportSummary } from "@/services/transaction-service";
 import { formatMoney } from "@/lib/currencies";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -24,11 +23,10 @@ const periodLabels: Record<Period, string> = {
 
 function ReportsPage() {
   const [period, setPeriod] = useState<Period>("daily");
-  const getReportFn = useServerFn(getReport);
 
   const { data, isLoading } = useQuery({
     queryKey: ["report", period],
-    queryFn: () => getReportFn({ data: { period } }),
+    queryFn: () => getReportSummary(period),
   });
 
   const maxCategoryTotal = data?.byCategory[0]?.total ?? 0;
