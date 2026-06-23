@@ -1,6 +1,6 @@
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport, type ToolUIPart, type UIMessage } from "ai";
+import { DefaultChatTransport, type FileUIPart, type ToolUIPart, type UIMessage } from "ai";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Mic, MicOff } from "lucide-react";
@@ -11,7 +11,7 @@ import {
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
-import { Message, MessageContent, MessageResponse } from "@/components/ai-elements/message";
+import { Message, MessageContent } from "@/components/ai-elements/message";
 import {
   PromptInput,
   PromptInputButton,
@@ -86,7 +86,58 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
     },
   });
 
-  const isThinking = status === "submitted";
+  const isThinking = status === "submitted" || status === "streaming";
+
+  const renderMessageParts = useCallback((message: UIMessage) => {
+    return message.parts.map((part, index) => {
+      if (part.type === "text") {
+        return (
+          <p key={index} className="whitespace-pre-wrap">
+            {part.text}
+          </p>
+        );
+      }
+
+      if (part.type === "file") {
+        const filePart = part as FileUIPart;
+        const fileName = filePart.filename ?? "attachment";
+        return (
+          <div key={index} className="rounded-md border border-border bg-muted px-3 py-2 text-sm">
+            {filePart.mediaType?.startsWith("image/") ? (
+              <img
+                src={filePart.url}
+                alt={fileName}
+                className="max-h-40 w-auto rounded-md object-contain"
+              />
+            ) : null}
+            <a
+              href={filePart.url}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block font-medium text-primary underline"
+            >
+              {fileName}
+            </a>
+          </div>
+        );
+      }
+
+      if (part.type.startsWith("tool-")) {
+        const toolPart = part as ToolUIPart;
+        return (
+          <Tool key={index} defaultOpen={false}>
+            <ToolHeader type={toolPart.type} state={toolPart.state} />
+            <ToolContent>
+              <ToolInput input={toolPart.input} />
+              <ToolOutput output={toolPart.output} errorText={toolPart.errorText} />
+            </ToolContent>
+          </Tool>
+        );
+      }
+
+      return null;
+    });
+  }, []);
 
   return (
     <div className="flex h-full flex-col">
@@ -112,7 +163,13 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
                   <button
                     key={suggestion}
                     type="button"
-                    onClick={() => sendMessage({ text: suggestion })}
+                    onClick={() => {
+                      if (status === "submitted" || status === "streaming") {
+                        toast.error("Please wait for TOKA to finish before sending another message.");
+                        return;
+                      }
+                      sendMessage({ text: suggestion });
+                    }}
                     className="rounded-full border border-border bg-card px-3.5 py-1.5 text-sm text-foreground shadow-soft transition-colors hover:bg-accent"
                   >
                     {suggestion}
@@ -125,32 +182,11 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
           {messages.map((message) => (
             <Message from={message.role} key={message.id}>
               <MessageContent>
-                {message.role === "user"
-                  ? message.parts.map((part, index) =>
-                      part.type === "text" ? (
-                        <p key={index} className="whitespace-pre-wrap">
-                          {part.text}
-                        </p>
-                      ) : null,
-                    )
-                  : message.parts.map((part, index) => {
-                      if (part.type === "text") {
-                        return <MessageResponse key={index}>{part.text}</MessageResponse>;
-                      }
-                      if (part.type.startsWith("tool-")) {
-                        const toolPart = part as ToolUIPart;
-                        return (
-                          <Tool key={index} defaultOpen={false}>
-                            <ToolHeader type={toolPart.type} state={toolPart.state} />
-                            <ToolContent>
-                              <ToolInput input={toolPart.input} />
-                              <ToolOutput output={toolPart.output} errorText={toolPart.errorText} />
-                            </ToolContent>
-                          </Tool>
-                        );
-                      }
-                      return null;
-                    })}
+                {message.role === "user" ? (
+                  renderMessageParts(message)
+                ) : (
+                  renderMessageParts(message)
+                )}
               </MessageContent>
             </Message>
           ))}
@@ -169,7 +205,7 @@ export function ChatWindow({ conversationId, initialMessages }: ChatWindowProps)
       <div className="border-t border-border bg-background p-3">
         <div className="mx-auto w-full max-w-3xl">
           <PromptInputProvider>
-            <Composer status={status} onStop={stop} onSend={(text) => sendMessage({ text })} />
+            <Composer status={status} onStop={stop} onSend={(message) => sendMessage(message)} />
           </PromptInputProvider>
         </div>
       </div>
@@ -183,7 +219,7 @@ function Composer({
   onStop,
 }: {
   status: ReturnType<typeof useChat>["status"];
-  onSend: (text: string) => void;
+  onSend: (message: { text: string; files?: FileUIPart[] }) => Promise<void>;
   onStop: () => void;
 }) {
   const controller = usePromptInputController();
@@ -206,13 +242,23 @@ function Composer({
     if (status === "ready") focusInput();
   }, [status]);
 
-  const handleSubmit = (message: PromptInputMessage) => {
+  const handleSubmit = async (message: PromptInputMessage) => {
     const text = message.text.trim();
     if (!text) return;
+    if (status === "submitted" || status === "streaming") {
+      toast.error("Please wait for TOKA to finish before sending another message.");
+      return;
+    }
     if (listening) stopListening();
-    onSend(text);
-    controller.textInput.clear();
-    requestAnimationFrame(focusInput);
+
+    try {
+      await onSend({ text, files: message.files?.length ? message.files : undefined });
+      controller.textInput.clear();
+      requestAnimationFrame(focusInput);
+    } catch (error) {
+      toast.error("Unable to send your message. Please try again.");
+      console.error("Chat send failed", error);
+    }
   };
 
   return (

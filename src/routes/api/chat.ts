@@ -34,25 +34,50 @@ export const Route = createFileRoute("/api/chat")({
         }
 
         // --- Validate input ---
-        const body = (await request.json()) as {
-          messages?: UIMessage[];
-          conversationId?: string;
-        };
-        const conversationId = z.string().uuid().safeParse(body.conversationId);
-        if (
-          !conversationId.success ||
-          !Array.isArray(body.messages) ||
-          body.messages.length === 0
-        ) {
+        const body = (await request.json()) as unknown;
+        const requestSchema = z.object({
+          conversationId: z.string().uuid(),
+          messages: z
+            .array(
+              z.object({
+                role: z.enum(["system", "user", "assistant"]),
+                parts: z
+                  .array(
+                    z.union([
+                      z.object({
+                        type: z.literal("text"),
+                        text: z.string(),
+                      }),
+                      z.object({
+                        type: z.literal("file"),
+                        filename: z.string().optional(),
+                        mediaType: z.string().optional(),
+                        url: z.string().optional(),
+                      }),
+                      z.object({
+                        type: z.string(),
+                      }).passthrough(),
+                    ]),
+                  )
+                  .nonempty(),
+              }),
+            )
+            .min(1),
+        });
+
+        const parsed = requestSchema.safeParse(body);
+        if (!parsed.success) {
           return new Response("Invalid request", { status: 400 });
         }
-        const messages = body.messages.slice(-30);
+
+        const conversationId = parsed.data.conversationId;
+        const messages = parsed.data.messages.slice(-30);
 
         // --- Verify the conversation belongs to this user ---
         const { data: conversation } = await supabase
           .from("conversations")
           .select("id, message, ai_response")
-          .eq("id", conversationId.data)
+          .eq("id", conversationId)
           .eq("user_id", userId)
           .maybeSingle();
         if (!conversation) {
@@ -190,26 +215,39 @@ Your jobs:
           messages: await convertToModelMessages(messages),
           tools,
           stopWhen: stepCountIs(8),
+          timeout: { totalMs: 120000, chunkMs: 15000 },
+          maxRetries: 1,
         });
 
         return result.toUIMessageStreamResponse({
           originalMessages: messages,
           onFinish: async ({ responseMessage }) => {
+            if (!responseMessage) return;
+
+            const userSummary = lastUserMessage.parts
+              .map((p) => {
+                if (p.type === "text") return p.text;
+                if (p.type === "file" && "filename" in p) return (p.filename ?? "attachment") + ".";
+                return "";
+              })
+              .filter(Boolean)
+              .join(" ")
+              .trim()
+              .slice(0, 500);
+
+            const aiSummary = responseMessage.parts
+              .map((p) => (p.type === "text" ? p.text : ""))
+              .join(" ")
+              .trim()
+              .slice(0, 2000);
+
             await supabase
               .from("conversations")
               .update({
-                message: lastUserMessage.parts
-                  .map((p) => (p.type === "text" ? p.text : ""))
-                  .join(" ")
-                  .trim()
-                  .slice(0, 500),
-                ai_response: responseMessage.parts
-                  .map((p) => (p.type === "text" ? p.text : ""))
-                  .join(" ")
-                  .trim()
-                  .slice(0, 2000),
+                message: userSummary,
+                ai_response: aiSummary,
               })
-              .eq("id", conversationId.data)
+              .eq("id", conversationId)
               .eq("user_id", userId);
           },
         });
